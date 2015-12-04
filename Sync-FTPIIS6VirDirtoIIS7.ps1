@@ -1,5 +1,6 @@
 function Get-IIS6FTPVirtualDirectories
 {
+[CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$True,
@@ -60,6 +61,7 @@ function Get-IIS6FTPVirtualDirectories
 
 function Add-VirtualDirectoriestoFTP
 {
+[CmdletBinding()]
     param
     (
         [Parameter(Mandatory=$true,ValueFromPipeline=$true)]
@@ -98,19 +100,35 @@ function Add-VirtualDirectoriestoFTP
                     try
                     {
                         New-WebVirtualDirectory -Site $Site.Name -Name $SiteVD.VDName -PhysicalPath $SiteVD.VDPath
+                        $VDCreateStatus = "Created"
                     }
                     catch
                     {
                         if($Error[0].Exception -match "Parameter 'PhysicalPath' should point to existing path.")
                         {
-                            Write-Warning -Message "FTP VD [PhysicalPath NOT FOUND] Site: $($Site.Name) Name: $($SiteVD.VDName) PhysicalPath: $($SiteVD.VDPath)"
+                            #Write-Warning -Message "FTP VD [PhysicalPath NOT FOUND] Site: $($Site.Name) Name: $($SiteVD.VDName) PhysicalPath: $($SiteVD.VDPath)"
+                            $VDCreateStatus = "Fail: Path not found"
+                        }
+                        else
+                        {
+                            Write-Error -Exception $Error[0]
+                            $VDCreateStatus = "Fail: $($Error[0].Exception)"
                         }
                     }
                 }
                 else
                 {
-                    Write-Warning "FTP VD [ALREADY EXIST] Site: $($Site.Name) Name: $($SiteVD.VDName) PhysicalPath: $($SiteVD.VDPath)"
+                    #Write-Warning "FTP VD [ALREADY EXIST] Site: $($Site.Name) Name: $($SiteVD.VDName) PhysicalPath: $($SiteVD.VDPath)"
+                    $VDCreateStatus = "VD already exist"
                 }
+
+                #Write object to pipeline
+                $Object = New-Object PSObject
+                $object | add-member Noteproperty -Name SiteName -Value $Site.Name
+                $Object | add-member Noteproperty -Name VDName -Value $SiteVD.VDName
+                $Object | add-member Noteproperty -Name VDPath -Value $SiteVD.VDPath
+                $Object | add-member Noteproperty -Name Status -Value $VDCreateStatus
+                Write-Output $Object
             }
         }
     }
